@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow | Student Task Manager</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #4a90e2;
+            --accent: #673ab7;
+            --danger: #ff5252;
+            --success: #4caf50;
+            --text: #333;
+            --text-light: #666;
+        }
+
+        [data-theme="dark"] {
+            --bg: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --primary: #64b5f6;
+            --text: #e0e0e0;
+            --text-light: #aaa;
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Pomodoro Timer Styles */
+        .timer-display {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 10px 0;
+            color: var(--accent);
+        }
+
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Task Form Styles */
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 150px 100px auto;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .input-group { grid-template-columns: 1fr; }
+        }
+
+        input, select, button {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        button {
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.9; }
+        .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+
+        /* Task List Styles */
+        .task-list { list-style: none; padding: 0; }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: var(--card-bg);
+            border-left: 5px solid #ccc;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .task-item.high { border-left-color: var(--danger); }
+        .task-item.medium { border-left-color: #ffc107; }
+        .task-item.low { border-left-color: var(--success); }
+
+        .task-info { flex-grow: 1; margin: 0 15px; }
+        .task-name { font-weight: 600; display: block; }
+        .task-meta { font-size: 0.85rem; color: var(--text-light); }
+
+        .completed { text-decoration: line-through; opacity: 0.6; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .theme-toggle { background: none; color: var(--text); font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>FocusFlow 🎓</h1>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">🌓</button>
+    </header>
+
+    <div class="card">
+        <h3 style="margin-top:0">Focus Timer</h3>
+        <div class="timer-display" id="timer">25:00</div>
+        <div class="timer-controls">
+            <button onclick="startTimer()">Start</button>
+            <button class="btn-outline" onclick="pauseTimer()">Pause</button>
+            <button class="btn-outline" onclick="resetTimer()">Reset</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="input-group">
+            <input type="text" id="taskInput" placeholder="Assignment or Exam name...">
+            <input type="date" id="dateInput">
+            <select id="priorityInput">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+            </select>
+            <button onclick="addTask()">Add Task</button>
+        </div>
+    </div>
+
+    <ul class="task-list" id="taskList"></ul>
+</div>
+
+<script>
+    // --- State Management ---
+    let tasks = JSON.parse(localStorage.getItem('studentTasks')) || [];
+    let timerInterval;
+    let timeLeft = 25 * 60;
+
+    // --- Task Logic ---
+    function addTask() {
+        const name = document.getElementById('taskInput').value;
+        const date = document.getElementById('dateInput').value;
+        const priority = document.getElementById('priorityInput').value;
+
+        if (!name) return alert("Please enter a task name!");
+
+        const newTask = {
+            id: Date.now(),
+            name,
+            date,
+            priority,
+            completed: false
+        };
+
+        tasks.push(newTask);
+        saveAndRender();
+        document.getElementById('taskInput').value = '';
+    }
+
+    function toggleTask(id) {
+        tasks = tasks.map(t => t.id === id ? {...t, completed: !t.completed} : t);
+        saveAndRender();
+    }
+
+    function deleteTask(id) {
+        tasks = tasks.filter(t => t.id !== id);
+        saveAndRender();
+    }
+
+    function saveAndRender() {
+        localStorage.setItem('studentTasks', JSON.stringify(tasks));
+        renderTasks();
+    }
+
+    function renderTasks() {
+        const list = document.getElementById('taskList');
+        list.innerHTML = '';
+
+        tasks.sort((a,b) => b.id - a.id).forEach(task => {
+            const li = document.createElement('li');
+            li.className = `task-item ${task.priority}`;
+            li.innerHTML = `
+                <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTask(${task.id})">
+                <div class="task-info ${task.completed ? 'completed' : ''}">
+                    <span class="task-name">${task.name}</span>
+                    <span class="task-meta">${task.date ? 'Due: ' + task.date : 'No deadline'} | Priority: ${task.priority}</span>
+                </div>
+                <button style="background:none; color:var(--danger);" onclick="deleteTask(${task.id})">✕</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    // --- Timer Logic ---
+    function updateTimerDisplay() {
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        document.getElementById('timer').textContent = 
+            `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function startTimer() {
+        if (timerInterval) return;
+        timerInterval = setInterval(() => {
+            if (timeLeft > 0) {
+                timeLeft--;
+                updateTimerDisplay();
+            } else {
+                clearInterval(timerInterval);
+                alert("Time's up! Take a break.");
+            }
+        }, 1000);
+    }
+
+    function pauseTimer() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+
+    function resetTimer() {
+        pauseTimer();
+        timeLeft = 25 * 60;
+        updateTimerDisplay();
+    }
+
+    // --- Theme Logic ---
+    function toggleTheme() {
+        const body = document.body;
+        const current = body.getAttribute('data-theme');
+        body.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    }
+
+    // Initial Load
+    renderTasks();
+</script>
+
+</body>
+</html>

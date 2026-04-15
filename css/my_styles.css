@@ -1,0 +1,15 @@
+.text-primary {
+    color: rgb(43, 41, 196) !important;
+}
+
+.bg-primary {
+    background-color: rgb(43, 41, 196) !important;
+}
+
+.subheading.mb-5 a {
+    color: rgb(43, 41, 196) !important;
+}
+
+.social-icons a:hover {
+    background-color: rgb(43, 41, 196) !important;
+}
